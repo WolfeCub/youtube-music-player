@@ -11,7 +11,7 @@ import pafy
 import youtube_dl
 
 import playlist_fetcher
-from loggers import StdLogger
+from loggers import Logger, StdLogger
 
 class YouTubePlayer:
     def __init__(self, verbose=False):
@@ -20,7 +20,7 @@ class YouTubePlayer:
             'quiet': not verbose
             }
         )
-        self.logger = StdLogger()
+        self.logger = StdLogger() if verbose else Logger()
         self.vlc_instance = vlc.Instance()
         self.vlc_player = self.vlc_instance.media_player_new()
         self.current = None
