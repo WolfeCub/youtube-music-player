@@ -1,25 +1,31 @@
+#!/usr/bin/env python3
 import sys
 import time
 import random
 import argparse
-from pprint import pprint
 
 import vlc
 import pafy
 import youtube_dl
 
-def get_playlist_urls(playlist_url, verbose=False, shuffle=False):
-    with youtube_dl.YoutubeDL({'format': 'bestaudio', 'quiet': not verbose}) as ytdl:
-        r = ytdl.extract_info(playlist_url, download=False)
+import playlist_fetcher
 
-    urls = []
-    for entry in r['entries']:
-        for i in range(len(entry['formats'])):
-            if entry['formats'][i+1].get('height') is not None:
-                urls.append(entry['formats'][i]['url'])
-                break
+ytdl = None
 
-    return urls if not shuffle else random.shuffle(urls)
+def progress(count, total, status=''):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+    sys.stdout.write(f'[{bar}] {percents}%\r')
+    sys.stdout.flush()
+
+def get_best_audio_url(json, verbose=False):
+    for i in range(len(json['formats'])-1):
+        if json['formats'][i+1].get('height') is not None:
+            return json['formats'][i]['url']
 
 def play_url(url, volume=100):
     instance = vlc.Instance()
@@ -33,17 +39,21 @@ def play_url(url, volume=100):
 
 def play_url_list(url_list):
     for url in urls:
-        player = play_url(url)
+        res = ytdl.extract_info(url, download=False)
+
+        audio_url = get_best_audio_url(res)
+        player = play_url(audio_url)
 
         sys.stdout.write('\033[K')
-        print('Loading...\r', end='')
         while player.get_state() == vlc.State.Opening:
             time.sleep(1)
 
+        print(res['title'])
         while player.get_state() != vlc.State.Ended:
             time.sleep(1)
-            sys.stdout.write('\033[K')
-            print(f'{(player.get_time()/player.get_length())*100}%\r', end='')
+            if player.get_length() != 0:
+                sys.stdout.write('\033[K')
+                progress(player.get_time(), player.get_length())
 
 
 if __name__ == '__main__':
@@ -65,7 +75,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    ytdl = youtube_dl.YoutubeDL({
+        'format': 'bestaudio',
+        'quiet': not args.verbose}
+    )
+
     if args.playlist is not None:
         #"https://www.youtube.com/playlist?list=PLNoB-hcIcvVd68WVqZGjWivuFgVgf5VVV"
-        urls = get_playlist_urls(args.playlist)
+        print('Fetching playlist...', end='\r')
+        urls = playlist_fetcher.fetch(args.playlist, args.shuffle)
         play_url_list(urls)
