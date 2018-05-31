@@ -3,58 +3,68 @@ import sys
 import time
 import random
 import argparse
+import threading
+from pprint import pprint
 
 import vlc
 import pafy
 import youtube_dl
 
 import playlist_fetcher
+from loggers import StdLogger
 
-ytdl = None
+class YouTubePlayer:
+    def __init__(self, verbose=False):
+        self.ytdl = youtube_dl.YoutubeDL({
+            'format': 'bestaudio',
+            'quiet': not verbose
+            }
+        )
+        self.logger = StdLogger()
+        self.vlc_instance = vlc.Instance()
+        self.vlc_player = self.vlc_instance.media_player_new()
+        self.current = None
+        self.queue = None
 
-def progress(count, total, status=''):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
+    def get_best_audio_url(self, json, verbose=False):
+        self.logger.info('Fetching best url')
+        for i in range(len(json['formats'])-1):
+            if json['formats'][i+1].get('height') is not None:
+                return json['formats'][i]['url']
 
-    percents = round(100.0 * count / float(total), 1)
-    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+    def play_url(self, json, audio_url, volume=100):
+        media = self.vlc_instance.media_new(audio_url) 
+        self.vlc_player.set_media(media)
+        self.vlc_player.audio_set_volume(volume)
+        self.logger.info('Playing song')
+        self.vlc_player.play()
+        self.vlc_player.set_time(self.vlc_player.get_length() - 10000)
+        self.current = json
 
-    sys.stdout.write(f'[{bar}] {percents}%\r')
-    sys.stdout.flush()
+    def song_finished_callback(self, data, url_iterator):
+        self.logger.info('Song completed callback reached')
+        t = threading.Thread(target=self.play_url_list, args=(url_iterator, True))
+        t.start()
 
-def get_best_audio_url(json, verbose=False):
-    for i in range(len(json['formats'])-1):
-        if json['formats'][i+1].get('height') is not None:
-            return json['formats'][i]['url']
+    def play_url_list(self, url_iterator, recursive=False):
+        nxt = next(url_iterator)
+        self.logger.info(f"Extracting info for '{next(url_iterator)}'")
+        res = self.ytdl.extract_info(nxt, download=False)
 
-def play_url(url, volume=100):
-    instance = vlc.Instance()
-    player = instance.media_player_new()
-    media = instance.media_new(url) 
-    player.set_media(media)
-    player.audio_set_volume(volume)
-    player.play()
+        audio_url = self.get_best_audio_url(res)
+        self.play_url(res, audio_url)
 
-    return player
-
-def play_url_list(url_list):
-    for url in urls:
-        res = ytdl.extract_info(url, download=False)
-
-        audio_url = get_best_audio_url(res)
-        player = play_url(audio_url)
-
-        sys.stdout.write('\033[K')
-        while player.get_state() == vlc.State.Opening:
+        while self.vlc_player.get_state() == vlc.State.Opening:
             time.sleep(1)
 
-        print(res['title'])
-        while player.get_state() != vlc.State.Ended:
-            time.sleep(1)
-            if player.get_length() != 0:
-                sys.stdout.write('\033[K')
-                progress(player.get_time(), player.get_length())
+        if not recursive:
+            events = self.vlc_player.event_manager()
+            events.event_attach(vlc.EventType.MediaPlayerEndReached, self.song_finished_callback, url_iterator)
 
+    def play_playlist(self, playlist_url, shuffle=False):
+        self.logger.info('Fetching url... ', end='')
+        self.queue = playlist_fetcher.fetch(playlist_url)
+        self.play_url_list(self.queue)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A program for streaming and managing YouTube audio')
@@ -75,13 +85,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    ytdl = youtube_dl.YoutubeDL({
-        'format': 'bestaudio',
-        'quiet': not args.verbose}
-    )
+    #"https://www.youtube.com/playlist?list=PLNoB-hcIcvVd68WVqZGjWivuFgVgf5VVV"
+    if args.playlist is None:
+        exit(0)
 
-    if args.playlist is not None:
-        #"https://www.youtube.com/playlist?list=PLNoB-hcIcvVd68WVqZGjWivuFgVgf5VVV"
-        print('Fetching playlist...', end='\r')
-        urls = playlist_fetcher.fetch(args.playlist, args.shuffle)
-        play_url_list(urls)
+    c = YouTubePlayer(verbose=args.verbose)
+    c.play_playlist(args.playlist, args.shuffle)
+
+    while 1:
+       time.sleep(1)
+       if c.vlc_player.get_length() != 0:
+           print(f'{c.current["title"]} - {(c.vlc_player.get_time()/c.vlc_player.get_length())*100:.2f}%')

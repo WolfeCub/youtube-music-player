@@ -9,8 +9,7 @@ from collections import OrderedDict
 def fetch(url, shuffle=False):
     sTUBE = ''
     cPL = ''
-    amp = 0
-    final_url = []
+    cache = set()
 
     eq = url.rfind('=') + 1
     cPL = url[eq:]
@@ -26,11 +25,9 @@ def fetch(url, shuffle=False):
             yPL = str(PL)
             if '&' in yPL:
                 yPL_amp = yPL.index('&')
-            final_url.append('http://www.youtube.com/' + yPL[:yPL_amp])
-
-        final_list = list(OrderedDict.fromkeys(final_url))
-        if shuffle: random.shuffle(final_list)
-
-        return final_list
+            url = f'http://www.youtube.com/{yPL[:yPL_amp]}'
+            if url not in cache:
+                cache.add(url)
+                yield url
     else:
         raise Exception('No videos found in playlist')
