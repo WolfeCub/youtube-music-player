@@ -48,10 +48,11 @@ class YouTubePlayer:
 
     def play_url_list(self, url_iterator, recursive=False):
         nxt = next(url_iterator)
-        self.logger.info(f"Extracting info for '{next(url_iterator)}'")
+        self.logger.info(f"Extracting info for '{nxt}'")
         res = self.ytdl.extract_info(nxt, download=False)
 
         audio_url = self.get_best_audio_url(res)
+        print(audio_url)
         self.play_url(res, audio_url)
 
         while self.vlc_player.get_state() == vlc.State.Opening:
