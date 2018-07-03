@@ -1,1 +1,0 @@
-C:\dev\SideProjects\YoutubeMusicPlayer\YoutubeMusicPlayer\YoutubeMusicPlayer.Android\obj\Debug\designtime\Resource.Designer.cs
