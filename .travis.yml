@@ -1,0 +1,5 @@
+language: csharp
+before_install:
+    - sudo bash .travis/android-tools-install.sh
+    - sudo bash .travis/xamarin-install.sh
+solution: src/YoutubeMusicPlayer.sln
