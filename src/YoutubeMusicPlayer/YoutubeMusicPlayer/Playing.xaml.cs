@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 using Android.Media;
-using YoutubeExplode.Models; 
+using YoutubeExplode.Models;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using YoutubeExplode.Models.MediaStreams;
@@ -25,6 +22,8 @@ namespace YoutubeMusicPlayer
         object Lock = new object();
         CancellationTokenSource Source = new CancellationTokenSource();
 
+        SongList SongListPage = null;
+
         public Playing(YoutubeClient yclient, Playlist playlist)
         {
             InitializeComponent();
@@ -35,16 +34,21 @@ namespace YoutubeMusicPlayer
 
             SetArt();
             PlayNextSongInPlayList(Source.Token);
+
+            CurrentMedia.Completion += OnButton_Next;
+        }
+
+        private void InitializeSongList()
+        {
+            if (SongListPage == null)
+                SongListPage = new SongList(CurrentPlaylist, this);
         }
 
         protected override bool OnBackButtonPressed()
         {
-            YClient = null;
-            CurrentPlaylist = null;
-            CurrentMedia.Reset();
-            CurrentMedia.Dispose();
-            Lock = null;
-            Source = null;
+            InitializeSongList();
+            SongListPage.ScrollToIndex(Index);
+            Navigation.PushModalAsync(SongListPage);
             base.OnBackButtonPressed();
             return true;
         }
@@ -74,7 +78,7 @@ namespace YoutubeMusicPlayer
             RunWithCancellation();
         }
 
-        private void RunWithCancellation()
+        public void RunWithCancellation()
         {
             lock (Lock)
             {
@@ -107,6 +111,8 @@ namespace YoutubeMusicPlayer
             CurrentMedia.SetDataSource(url);
             CurrentMedia.Prepare();
             CurrentMedia.Start();
+            InitializeSongList();
+            SongListPage.SetSelectedItem(Index);
         }
     }
 }

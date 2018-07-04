@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:components="clr-namespace:YoutubeMusicPlayer.Components"
+             x:Class="YoutubeMusicPlayer.SongList"
+             BackgroundColor="Black">
+    <ContentPage.Content>
+        <ListView x:Name="SongListView">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <components:IndexImageCell 
+                                Text="{Binding Title}" 
+                                TextColor="BlanchedAlmond"
+                                ImageSource="{Binding Image}"
+                                ListIndex="{Binding Index}"
+                                Tapped="OnListItemTap" />
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </ContentPage.Content>
+</ContentPage>

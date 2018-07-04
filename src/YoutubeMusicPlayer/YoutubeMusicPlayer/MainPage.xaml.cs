@@ -29,7 +29,7 @@ namespace YoutubeMusicPlayer
             var playlist = await YClient.GetPlaylistAsync(id);
 
             PlayingPage = new Playing(YClient, playlist);
-            await Navigation.PushModalAsync(PlayingPage);
+            Application.Current.MainPage = PlayingPage;
         }
     }
 }
