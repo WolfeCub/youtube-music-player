@@ -22,14 +22,14 @@ unzip -q android-ndk*.zip
 cd android-sdk-linux/tools
 
 expect -c "\
-set timeout 1800\
-spawn ./android update sdk --no-ui\
+set timeout 1800;\
+spawn ./android update sdk --no-ui;\
 expect {\
   \"Do you accept the license '*-license-*'*\" {\
-        exp_send \"y\r\"\
-        exp_continue\
+        exp_send \"y\r\";\
+        exp_continue;\
   }\
-  eof\
+  eof;\
 }"
 
 # Download every build-tools version that has ever existed
