@@ -21,19 +21,13 @@ unzip -q android-ndk*.zip
 # Let it update itself and install some stuff
 cd android-sdk-linux/tools
 
-expect -c "\
-set timeout 1800;\
-spawn ./android update sdk --no-ui;\
-expect {\
-  \"Do you accept the license '*-license-*'*\" {\
-        exp_send \"y\r\";\
-        exp_continue;\
-  }\
-  eof;\
-}"
+CUR_DIR=$(pwd)
+
+$TRAVIS_BUILD_DIR/.travis/accept-licences.sh "./android update sdk --no-ui"
 
 # Download every build-tools version that has ever existed
 # This will save you time! Thank me later for this
+cd $CUR_DIR
 ./android update sdk --all --no-ui --filter $(seq -s, 27)
 
 # If you need additional packages for your app, check available packages with:
